@@ -4,7 +4,7 @@
 # key path is for caching 
 ITF="wlan0"
 key_path="$HOME/wifi_keys"
-pkg_dir="$HOME/wifi_tools"
+pkg_dir="$HOME/linux-tools/wifi_tools"
 Args=$@
 counter=0
 DEBUG=0
@@ -23,6 +23,7 @@ reg_pattern="s/\n/$splitToken/g"
 wks_split=($(find $key_path | sed "s/ /$spaceToken/g"))
 
 # IFS=$"$splitToken"
+trap 'echo -e  "\nCtrl-C will exit";exit 1'  INT 
 
 wifi_key_read(){
     command=$1
@@ -86,6 +87,7 @@ SCANNED_BUFFER=""
 buffer_filtering() {
     [[ $SCANNED_BUFFER == "" ]] && echo "EMPTY SSIDS BUFFER !!"
 
+    trap 'echo -e  "\nCtrl-C will exit";exit 1'  INT 
     SSID_CHOICE_ID="$(echo -e "$SCANNED_BUFFER"  \
         | gum filter --indicator="==>" \
         | cut -d'.' -f1 )"
@@ -189,6 +191,26 @@ findIndex (){
     done
 }
 
+save_ssid_to_file (){
+    selected=$1
+    pass="$(gum input --password --prompt "wifi passwd : ")"
+    echo "DONE!"
+
+    if [[ $pass == "" ]]; then 
+        echo "Empty password"
+        exit 0 
+    fi 
+
+    target="$key_path/$(echo "$selected" | tr "[:upper:]" "[:lower:]" | sed "s/ /_/g" )"
+    set +o history
+
+    psk=$(doas wpa_passphrase "$selected" "$pass" | doas tee "/etc/wpa_supplicant.conf" )
+    echo "SAVING HEEHRE $target"
+    echo "$psk" | tee "$target" &> /dev/null
+    wpa_connect "/etc/wpa_supplicant.conf"
+    set -o history
+}
+
 # polish it up
 wifi_scanner(){
 
@@ -241,7 +263,6 @@ wifi_scanner(){
 
         else 
 
-        
             buffer_filtering $scanned_result
             selected=${ordered_keys[$SSID_CHOICE_ID]}
             cached_ssid=${wk_cached["$selected-cached"]} 
@@ -253,20 +274,18 @@ wifi_scanner(){
             echo "[manual] connecting to $selected -> $status"
 
             if [[ "$cached_ssid" != "" ]]; then 
-                wpa_connect "${wk_cached["$selected-cached"]}"
+                action=$(gum choose "connect" "edit")
+
+                case $action in 
+                    "connect" )
+                        wpa_connect "${wk_cached["$selected-cached"]}";;
+                    "edit" )
+                        save_ssid_to_file "$selected"
+                esac
             else 
-                echo -e "*please insert your passwrd ->\n"
-                pass="$(gum input --password --prompt "wifi passwd : ")"
-                target="$key_path/$(echo $selected | tr "[:upper:]" "[:lower:]" | sed "s/ /_/g" )"
-                set +o history
-
-                psk=$(doas wpa_passphrase "$selected" "$pass" | doas tee "/etc/wpa_supplicant.conf" )
-                echo "$psk" | tee "$target"
-                wpa_connect "/etc/wpa_supplicant.conf"
-                set -o history
-
+                save_ssid_to_file "$selected"
             fi
-        
+       
         fi
 
     else 

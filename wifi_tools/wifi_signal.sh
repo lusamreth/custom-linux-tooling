@@ -4,7 +4,7 @@
 
 declare -A iw_res
 rws=0
-pkg_dir="$HOME/wifi_tools"
+pkg_dir="$HOME/linux-tools/wifi_tools"
 
 extract() {
     echo "SS"
