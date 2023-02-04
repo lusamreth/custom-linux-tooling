@@ -1,0 +1,2 @@
+[console_scripts]
+dunst_controller = dunst_controller:cli

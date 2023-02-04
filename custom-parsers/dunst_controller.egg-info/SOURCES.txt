@@ -1,0 +1,7 @@
+setup.py
+dunst_controller.egg-info/PKG-INFO
+dunst_controller.egg-info/SOURCES.txt
+dunst_controller.egg-info/dependency_links.txt
+dunst_controller.egg-info/entry_points.txt
+dunst_controller.egg-info/requires.txt
+dunst_controller.egg-info/top_level.txt

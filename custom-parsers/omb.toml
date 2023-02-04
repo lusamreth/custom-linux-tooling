@@ -1,0 +1,20 @@
+[utility]
+    controllers="./controllers.py"
+     
+    [utility.volume]
+    param="%controllers"
+    msg="bruh"
+    bind="SHIF"
+
+    [utility.dec]
+    param="bean %controllers"
+    msg="deca "
+    bind="SHIF"
+
+    [utility.volume.keen]
+    controllers="1"
+    param="%controllers $[1,2,3]"
+    msg="bruh $[1,2,3]"
+    bind="SHIF"
+
+

@@ -1,0 +1,39 @@
+[group]
+    [group.togglegroup]
+    param="dwindle"
+    msg="dwindle mode activated!"
+    bind='SUPERSHIFT,k'
+
+    # [group.changegroupactive]
+    # param=["b"]
+    # msg="moving $[back,forward]!"
+    # bind='SUPERSHIFT, $[k,n]'
+    
+
+    # [group.changegroupactive.back]
+    # param="b"
+    # msg="moving back!"
+    # bind='SUPERSHIFT,k'
+    
+    [group.changegroupactive.cycle]
+    param="$[b,f] $[2,3]"
+    msg="@ $[backward,forward]! $[22,3]"
+    bind='SUPERSHIFT,k @'
+
+[workspace]
+
+    [workspace.layoutmsg.cycle]
+    # allow meta programming
+    # @ = @1,//  @2, @3 , ... @n represent the parameter
+    param="@$[prev,next] $[1,2]"
+    msg="cycle through $[back,forward] $[2,3] $[5,10] $[1,2]"
+    bind='SUPERSHIFT, $[k,n]'
+
+[app]
+    [app.spotify]
+    bind="SUPERSHIFT,s"
+    [app.brave]
+    [app.alacritty]
+    [app.wofi]
+
+        # [group.toggle]
