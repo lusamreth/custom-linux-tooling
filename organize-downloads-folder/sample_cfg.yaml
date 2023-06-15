@@ -1,0 +1,12 @@
+folder: "/home/lusamreth/Downloads"
+mode: "copy"
+blocks:
+  - name: "picture-block"
+    ext:
+      - jpeg
+      - png
+    directory: "Pictures"
+    skip: "Telegram Desktops"
+    # filters:
+    #   - ext: jpeg
+    #     startWith: "/"
