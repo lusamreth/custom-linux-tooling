@@ -1,28 +1,32 @@
 #!/bin/bash
 # All the GLOBAL program variables
 #
-# key path is for caching 
 ITF="wlan0"
+DEBUG=0
+IW_ENABLE=0
+# key path is for caching 
+
 key_path="$HOME/wifi_keys"
-pkg_dir="$HOME/wifi_tools"
+pkg_dir="$HOME/linux-tools/wifi_tools"
 Args=$@
 counter=0
-DEBUG=0
-# wifi resolver options 
 auto_connect=false
-IW_ENABLE=0
+
+# wifi resolver options 
+# abort on nonzero exitstatus
+set -o errexit
+# abort on unbound variable
+# set -o nounset
+# don't hide errors within pipes
+set -o pipefail
+
 
 key_path="$HOME/wifi_keys"
 wks_path=($(find $key_path))
-
-# splitToken="xbbb<[]"
 spaceToken="??"
-
-reg_pattern="s/\n/$splitToken/g"
-# wks_split=$(find $key_path | sed -e ':a' -e 'N' -e '$!ba' -e $reg_pattern | sed "s/ /$spaceToken/g")
+# reg_pattern="s/\n/$splitToken/g"
 wks_split=($(find $key_path | sed "s/ /$spaceToken/g"))
 
-# IFS=$"$splitToken"
 
 wifi_key_read(){
     command=$1
@@ -41,9 +45,8 @@ then
     doas dhcpcd -b 
 fi
 
-
 dbg_info() { 
-    [[ $DEBUG > 0 ]] && echo "[[debug]]$1" || ([[ $2 ]] && echo "$2" || :)
+    [[ $DEBUG > 0 ]] && echo "[[debug]] $1" || ([[ $2 ]] && echo "$2" || :)
 }
 
 ask_loop() {
@@ -71,6 +74,7 @@ declare -A wk_cached
 
 wks_path=$(find $key_path)
 ordered_keys=()
+
 # https://stackoverflow.com/questions/9612090/how-to-loop-through-file-names-returned-by-find
 gum_box(){
     gum style \
@@ -85,7 +89,6 @@ SCANNED_BUFFER=""
 
 buffer_filtering() {
     [[ $SCANNED_BUFFER == "" ]] && echo "EMPTY SSIDS BUFFER !!"
-
     SSID_CHOICE_ID="$(echo -e "$SCANNED_BUFFER"  \
         | gum filter --indicator="==>" \
         | cut -d'.' -f1 )"
@@ -97,12 +100,16 @@ ssid_scanner(){
     leftover_cache=()
     i=0
 
+    source "$pkg_dir/banner.sh"
     dbg_info "Inserting wifi_keys into wk_cached registry !" 
     text_buffer=""
     
     print_buffer() { 
         SCANNED_BUFFER="$text_buffer"
-        echo -e "$SCANNED_BUFFER" | gum format
+        # echo -e "$SCANNED_BUFFER" | gum format
+        # echo "$SCANNED_BUFFER"
+        IFS=$":"
+        print_eol_box $text_buffer
     }
 
     if [[ $IW_ENABLE == 0 ]];then 
@@ -181,14 +188,6 @@ wpa_connect() {
     fi
 }
 
-findIndex (){
-    for i in "${!my_array[@]}"; do
-       if [[ "${my_array[$i]}" = "${value}" ]]; then
-           echo "${i}";
-       fi
-    done
-}
-
 # polish it up
 wifi_scanner(){
 
@@ -242,7 +241,7 @@ wifi_scanner(){
         else 
 
         
-            buffer_filtering $scanned_result
+            buffer_filtering 
             selected=${ordered_keys[$SSID_CHOICE_ID]}
             cached_ssid=${wk_cached["$selected-cached"]} 
 
