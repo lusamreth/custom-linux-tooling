@@ -4,7 +4,7 @@
 
 declare -A iw_res
 rws=0
-pkg_dir="$HOME/wifi_tools"
+pkg_dir="$HOME/linux-tools/wifi_tools"
 
 extract() {
     echo "SS"
@@ -99,8 +99,6 @@ testing_sorting_signal() {
 
 run_signal_sorting() {
     exec_iw_scan
-    
-    # copy to signal variable
     for ts in "${!iw_res[@]}"; do
         # reverse here 
         val=${iw_res["$ts"]}
