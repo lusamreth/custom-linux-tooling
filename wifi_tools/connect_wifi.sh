@@ -4,6 +4,9 @@
 ITF="wlan0"
 DEBUG=0
 IW_ENABLE=0
+SCANNER_MODE=0
+SCANNER_LOCK_FILE=""
+IS_CONNECTED=0
 # key path is for caching 
 
 key_path="$HOME/wifi_keys"
@@ -106,10 +109,8 @@ ssid_scanner(){
     
     print_buffer() { 
         SCANNED_BUFFER="$text_buffer"
-        # echo -e "$SCANNED_BUFFER" | gum format
-        # echo "$SCANNED_BUFFER"
         IFS=$":"
-        print_eol_box $text_buffer
+        # print_eol_box $text_buffer
     }
 
     if [[ $IW_ENABLE == 0 ]];then 
@@ -181,9 +182,14 @@ wpa_connect() {
     dbg_info "mock interface!"
     dbg_info "Successfully initialized wpa_supplicant"
     # dont run actual wpa if debug mode is enable
+    IS_CONNECTED=1
     if [ $DEBUG == 0 ]; then 
         doas pkill wpa_supplicant 
         sleep 1
+        # if [ ! -z $SCANNER_LOCK_FILE ]; then 
+        #     echo "SCANN"
+        #     echo "1" >> $SCANNER_LOCK_FILE
+        # fi
         gum spin --spinner globe --show-output --title "connecting" -- doas wpa_supplicant -i $ITF -B -c $1
     fi
 }
@@ -211,13 +217,13 @@ wifi_scanner(){
         prompt="Select your SSID [0-$((counter-1))]: "
         len=(${#overlap[@]})
         echo "[observe] overlap -> [${overlap[@]}|[$len]]"
-        # 
+
         if [ $auto_connect == true ]; then 
             keys=(${!hashset[@]})
-            # len=(${#overlap[@]})
             if [ $len == 1 ] ; then 
                 echo "[auto-on] connecting to ${keys[0]} ${wk_cached["${keys[0]}-cached"]}"
                 wpa_connect "${wk_cached["${keys[0]}-cached"]}"
+
             elif [[ $len > 1 ]] ;then 
                 # this is where we perform signal strength comparasion
                 # echo "[Debug] ${overlap[@]} ${!hashset[@]}"
@@ -239,7 +245,6 @@ wifi_scanner(){
             fi
 
         else 
-
         
             buffer_filtering 
             selected=${ordered_keys[$SSID_CHOICE_ID]}
@@ -276,6 +281,10 @@ wifi_scanner(){
 }
 
 
+ONLINE_STATUS=$(ping -q -c1 google.com &>/dev/null && echo online || echo offline)
+arg_counter=0
+
+INDEX=0
 for a in ${Args[@]}; do 
     case "$a" in
         # automatically 
@@ -288,15 +297,54 @@ for a in ${Args[@]}; do
         auto_connect=true;;
         "-d" )
         echo "DEBUG MODE ENABLE !"
-        ((DEBUG+=1));;
+        DEBUG=1;;
+        "-s" )
+        echo "SCANNER MODE ENABLE !"
+        let nxt_index=${INDEX}+1
+        conv=(${Args[@]})
+        nextItem=${conv[$nxt_index]}
+        if [[ -z $nextItem ]];then 
+            echo "scanner mode must provide lock file"
+            exit 1
+        fi
+        SCANNER_LOCK_FILE="$nextItem"
+        SCANNER_MODE=1;;
+        # *)
+        # echo "Unknown argument !"
+        # exit 1;;
 
     esac
+    let INDEX=${INDEX}+1
 done
 
+echo "WII $auto_connect"
 if [[ $auto_connect == true ]] && [[ $IW_ENABLE == 0 ]] ;then
     echo "iw tools must be enable to work!" 
     echo "enable via option -i"
     exit 1
 fi
 
-wifi_scanner 
+if [[ $SCANNER_MODE == 1 ]] && [[ $auto_connect == false ]] ;then
+    echo "auto connect feature must be enable to work!" 
+    echo "enable via option -a"
+    exit 1
+fi
+
+
+if [[ $SCANNER_MODE == 1 ]];then 
+    LOCK_STATE="$(cat $SCANNER_LOCK_FILE)"
+    if [[  "$ONLINE_STATUS" == "online"  ]];then 
+        echo "cancel scanning because wifi is already online!"
+    fi
+    while [[ $IS_CONNECTED != 1 ]] && [[ "$ONLINE_STATUS" == "offline" ]]; do
+        echo $IS_CONNECTED
+        echo $SCANNER_LOCK_FILE
+        echo "connect wifi..." 
+        wifi_scanner 
+        sleep 2
+    done
+
+    echo "wifi found!!" 
+else 
+    wifi_scanner 
+fi
