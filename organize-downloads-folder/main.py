@@ -1,6 +1,7 @@
 import os
-import multiprocessing
-import subprocess
+
+# import multiprocessing
+# import subprocess
 import logging
 from typing import Optional
 import yaml
@@ -224,7 +225,6 @@ def crawler(config: Config, debug=False):
 def main():
     config = readConfig()
     crawler(config)
-    pass
 
 
 if __name__ == "__main__":
