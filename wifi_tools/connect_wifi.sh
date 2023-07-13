@@ -202,7 +202,11 @@ wifi_scanner(){
     fi
     if [ $IW_ENABLE == 1 ]; then
         source "$pkg_dir/wifi_signal.sh"
-        run_signal_sorting
+        if [ $SCANNER_MODE == 1 ];then 
+            run_signal_sorting "restart-always"
+        else 
+            run_signal_sorting "default"
+        fi
         # gum spin --spinner dot --title "Buying Bubble Gum..." "iw dev wlan0 scan"
     fi
 
@@ -211,7 +215,7 @@ wifi_scanner(){
     comb_len=${#combined[@]}
 
     ssid_scanner
-
+    echo "OVA ${overlap[@]}"
     if [ $comb_len > 0 ];then 
     
         prompt="Select your SSID [0-$((counter-1))]: "
@@ -241,7 +245,7 @@ wifi_scanner(){
                 echo "[auto-on] connecting to the highest signal strength $ptr:$highest"
                 wpa_connect "${wk_cached["$ptr-cached"]}"
             else
-                echo "NO overlapp found "
+                echo "No overlapp found "
             fi
 
         else 
@@ -282,9 +286,9 @@ wifi_scanner(){
 
 
 ONLINE_STATUS=$(ping -q -c1 google.com &>/dev/null && echo online || echo offline)
+INDEX=0
 arg_counter=0
 
-INDEX=0
 for a in ${Args[@]}; do 
     case "$a" in
         # automatically 
@@ -317,7 +321,6 @@ for a in ${Args[@]}; do
     let INDEX=${INDEX}+1
 done
 
-echo "WII $auto_connect"
 if [[ $auto_connect == true ]] && [[ $IW_ENABLE == 0 ]] ;then
     echo "iw tools must be enable to work!" 
     echo "enable via option -i"
@@ -336,15 +339,31 @@ if [[ $SCANNER_MODE == 1 ]];then
     if [[  "$ONLINE_STATUS" == "online"  ]];then 
         echo "cancel scanning because wifi is already online!"
     fi
-    while [[ $IS_CONNECTED != 1 ]] && [[ "$ONLINE_STATUS" == "offline" ]]; do
-        echo $IS_CONNECTED
-        echo $SCANNER_LOCK_FILE
-        echo "connect wifi..." 
-        wifi_scanner 
-        sleep 2
+
+    while [[ "$LOCK_STATE" != "disable" ]]; do
+        echo "pinging wifi..."
+        if [[ $IS_CONNECTED != 1 ]] && [[ "$ONLINE_STATUS" == "offline" ]]; then 
+            echo "connect wifi..." 
+            wifi_scanner
+            sleep 2
+        else 
+            echo "connected!!"
+        fi
+
+        # updating online status
+        ONLINE_STATUS=$(ping -q -c1 google.com &>/dev/null && echo online || echo offline)
+        if [[ "$ONLINE_STATUS" == "offline" ]]; then 
+            echo "trying to connect to wifi again..."
+        else
+            echo "wifi is [[ $ONLINE_STATUS ]] !!"
+        fi
+
+        sleep 5
     done
 
-    echo "wifi found!!" 
+    if [[ "$LOCK_STATE" == "disable" ]]; then 
+        echo "encounter a disable status in daemon lock!"
+    fi
 else 
     wifi_scanner 
 fi
