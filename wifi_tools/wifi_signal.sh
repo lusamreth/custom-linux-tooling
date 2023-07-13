@@ -1,13 +1,16 @@
-# 
+#!/bin/bash 
 # this script is responsible for searching all the wifi SSID and 
 # also sort signal
 
 declare -A iw_res
+declare -A signals
+declare -A sorted_signals
+declare -A reversed_sorted_signals
+
 rws=0
 pkg_dir="$HOME/linux-tools/wifi_tools"
 
 extract() {
-    echo "SS"
     rws=$(doas iw dev wlan0 scan | \
         awk -f "$pkg_dir/iw_grab.awk" \
         | tr -d ' ')
@@ -21,19 +24,19 @@ exec_iw_scan() {
         doas iw dev wlan0 scan | \
         awk -f "$pkg_dir/iw_grab.awk" | tr -d ' ') 
 
-    for iw_pair in ${raw_scan[@]};do 
+    parsed_newline=${raw_scan%$'\n'*}
+    for iw_pair in $parsed_newline; do 
         ssid=$(echo $iw_pair | awk -F"," '{ print $1 }' \
             | sed "s/-?/ /g" | sed "s/ //" )
-
+        
         signal_str=$(echo $iw_pair | awk -F"," '{ print $2 }' | tr -d "dBm" )
         if [[ $ssid == "" ]];then 
             echo "Found empty name SSID!"
-            
         else 
             iw_res["$ssid"]="$signal_str"
+            signals["$signal_str"]="$ssid"
         fi
-
-        # echo "BEAN ${iw_res["$ssid"]} $ssid $signal_str"
+     
     done
 }
 
@@ -60,10 +63,6 @@ test_signal (){
     
 }
 
-declare -A signals
-declare -A sorted_signals
-declare -A reversed_sorted_signals
-
 sorting_signal() {
     # reverse signal 
     verbose=false
@@ -72,11 +71,11 @@ sorting_signal() {
         echo "verbose mode on !"
     fi
     sorted_keys=($(echo "${!signals[@]}"| tr " " "\n" | sort -n  | tr "\n" " "))
-
     for sorted_key in "${sorted_keys[@]}";do 
         if [[ $verbose == true ]];then 
             echo "[[verbose]] $sorted_key  , ${signals[$sorted_key]}"
         fi
+        # declare -A sorted_signals=(["${signals[$sorted_key]}"]=$sorted_key)
         sorted_signals["${signals[$sorted_key]}"]=$sorted_key
         reversed_sorted_signals["$sorted_key"]=${signals[$sorted_key]}
     done
@@ -98,12 +97,31 @@ testing_sorting_signal() {
 
 
 run_signal_sorting() {
-    exec_iw_scan
-    for ts in "${!iw_res[@]}"; do
-        # reverse here 
-        val=${iw_res["$ts"]}
-        signals["$val"]=$ts
-    done
-
-    sorting_signal 
+    fallback_opt=$1
+  set -Ee
+  function _catch {
+    case "$fallback_opt" in 
+        "restart-always" ) 
+          echo "restarting..." 
+          exec_iw_scan
+          sorting_signal
+          ;;
+        "crash" )
+          echo "closing"
+          exit 0
+          ;;
+        * ) 
+            echo "defualt"
+          ;;
+    esac
+    # exit 0  # optional; use if you don't want to propagate (rethrow) error to outer shell
+  }
+  function _finally {
+    echo "scanning done!"
+  }
+  trap _catch ERR
+  trap _finally EXIT
+  exec_iw_scan
+  sorting_signal
+    
 }
